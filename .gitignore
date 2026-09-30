@@ -1,0 +1,12 @@
+SoapyPlutoSDR/
+SoapySDR/
+libad9361-iio/
+libiio/
+
+build/
+*.o
+*.so
+*.a
+
+__pycache__/
+*.pyc
