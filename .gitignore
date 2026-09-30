@@ -1,7 +1,4 @@
-SoapyPlutoSDR/
-SoapySDR/
-libad9361-iio/
-libiio/
+
 
 build/
 *.o
