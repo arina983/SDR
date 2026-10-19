@@ -5,7 +5,7 @@
 **Дата выполнения:** 29.09.2026
 
 ---
-## 2. ADALM Pluto SDR & Timestamp
+## 3. ADALM Pluto SDR & Timestamp
 
 ### 1. Цель работы
 

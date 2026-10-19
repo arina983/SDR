@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Открываем файл для чтения
-name = "/home/arina/arina3/SDR/my_project/build/rxdata.pcm"
+name = "build/sdr2_rxdata.pcm"
 
 data = []
 imag = []
