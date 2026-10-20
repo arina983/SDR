@@ -91,6 +91,6 @@ PlutoSDR Source → разветвление на
 ### 6. Приложения
 
 1. Скриншот схемы GNU Radio Companion  
-![alt text](<Снимок экрана 2026-09-22 141331.png>)
+![alt text](<3.png>)
 2. Скриншот окон QT GUI Frequency Sink и Waterfall Sink при наблюдении трафика на частоте ≈ 658.2 МГц
-![alt text](<Снимок экрана 2026-09-22 141204.png>)
+![alt text](<4.png>)
