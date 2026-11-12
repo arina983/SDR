@@ -90,9 +90,9 @@ graph.py          - чтение PCM и график I/Q
 
 qpsk модуляция
 
-![alt text](<qpsk.png>)
-![alt text](<qpsk_zoom.png>)
+![alt text](<image/qpsk.png>)
+![alt text](<image/qpsk_zoom.png>)
 
 bpsk модуляция
 
-![alt text](<bpsk.png>)
+![alt text](<image/bpsk.png>)

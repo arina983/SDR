@@ -88,7 +88,7 @@
 ### 6. Приложения
 
 1. Скриншот схемы GNU Radio Companion 
-![alt text](<1.png>) 
+![alt text](<image/1.png>) 
 2. Скриншоты окон QT GUI (Time Sink и Frequency Sinks) при приёме станции 99.1 МГц
-![alt text](<2.png>)
+![alt text](<image/2.png>)
 

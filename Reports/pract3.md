@@ -63,7 +63,7 @@ Buffer: 1 - Samples: 1920, Time: ..., TimeDiff: ...
 
 ### Полученный график
 
-![alt text](<5.png>)
+![alt text](<image/5.png>)
 ---
 
 ## 5. Вывод
