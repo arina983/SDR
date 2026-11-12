@@ -9,8 +9,17 @@ typedef struct{
 } Complex;
 
 void generate_bits(int *bits, int N){
-    for (int i = 0; i < N; i++)
-        bits[i] = rand() % 2;
+    const char *msg = "hello";
+    int msg_len = 5;
+    int msg_bits = msg_len * 8;
+
+    for (int i = 0; i < N; i++) {
+        int pos = i % msg_bits;
+        int byte_index = pos / 8;
+        int bit_index  = 7 - (pos % 8);
+
+        bits[i] = (msg[byte_index] >> bit_index) & 1;
+    }
 }
 
 void bpsk(int *bits, Complex *symbols, int N){
