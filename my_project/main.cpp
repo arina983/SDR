@@ -19,7 +19,7 @@
 #define RX_GAIN 60.0
 #define TX_GAIN 60.0
 
-#define ITERATION_COUNT 200
+#define ITERATION_COUNT 100
 #define TIMEOUT_US 400000
 
 static volatile sig_atomic_t running = 1;
@@ -75,18 +75,19 @@ int main(int argc, char *argv[]){
     int *bits = NULL;
     Complex *symbols = NULL;
     Complex *tx_signal = NULL;
-    size_t L = 64;
+    size_t L = 10;
     size_t symbol_count = 0;
     size_t bit_count = 0;
     size_t sample_count = 0;
+    FILE *sym_file = NULL;
 
     // Открытие выбранного SDR
     SoapySDRKwargs args = {};
     SoapySDRKwargs_set(&args, "driver", "plutosdr");
     SoapySDRKwargs_set(&args, "uri", uri);
-    // SoapySDRKwargs_set(&args, "direct", "1");
-    // SoapySDRKwargs_set(&args, "timestamp_every", "1920");
-    // SoapySDRKwargs_set(&args, "loopback", "0");
+    SoapySDRKwargs_set(&args, "direct", "1");
+    SoapySDRKwargs_set(&args, "timestamp_every", "1920");
+    SoapySDRKwargs_set(&args, "loopback", "0");
 
     sdr = SoapySDRDevice_make(&args);
     SoapySDRKwargs_clear(&args);
@@ -200,19 +201,23 @@ int main(int argc, char *argv[]){
     signal(SIGINT, stop_program);
     signal(SIGTERM, stop_program);
 
-    if (rx_mode){
+    if (rx_mode) {
         char filename[64];
         snprintf(filename, sizeof(filename), "%s_rxdata.pcm", sdr_id);
-
         file = fopen(filename, "wb");
-
-        if (file == NULL){
-            perror("Не удалось открыть файл");
+        if (!file) {
+            perror("pcm");
             return EXIT_FAILURE;
         }
 
-        printf("Приём записывается в %s\n", filename);
+        sym_file = fopen("qpsk_symbols.txt", "w");  // или sdr2_rx_symbols.txt
+        if (!sym_file) {
+            perror("qpsk_symbols.txt");
+            return EXIT_FAILURE;
+        }
+        printf("RX txt → qpsk_symbols.txt\n");
     }
+    
 
     printf("Работа началась\n");
 
@@ -221,21 +226,30 @@ int main(int argc, char *argv[]){
         int flags = 0;
         long long timeNs = 0;
         int sr = SoapySDRDevice_readStream(sdr, rxStream, rx_buffs, rx_mtu, &flags, &timeNs, timeoutUs);
-        if (sr > 0){
-            if (rx_mode && file != NULL){
+        if (sr > 0) {
+            if (rx_mode && file != NULL) {
                 size_t written = fwrite(rx_buffer, 2 * sizeof(int16_t), (size_t)sr, file);
-                if (written != (size_t)sr){
-                    fprintf(stderr, "Ошибка записи в файл\n");
+                if (written != (size_t)sr) {
+                    fprintf(stderr, "Ошибка записи в pcm\n");
                     return EXIT_FAILURE;
                 }
             }
 
-            if (flags & SOAPY_SDR_HAS_TIME){
-                printf("Буфер %zu/%d | Сэмплы: %d | Флаги: %d | Время: %lld нс | Разница: %lld нс\n", buffers_read + 1, ITERATION_COUNT, sr, flags, timeNs, timeNs - last_time);
-                last_time = timeNs;
+            if (rx_mode && sym_file != NULL) {
+                for (int i = 0; i < sr; i++) {
+                    float I = (float)rx_buffer[2 * i];
+                    float Q = (float)rx_buffer[2 * i + 1];
+                    fprintf(sym_file, "%f %f\n", I, Q);
+                }
             }
-            else{
-                printf("Буфер %zu/%d | Сэмплы: %d | Флаги: %d | Время: н/д\n", buffers_read + 1, ITERATION_COUNT, sr, flags);
+
+            if (flags & SOAPY_SDR_HAS_TIME) {
+                printf("Буфер %zu/%d | Сэмплы: %d | Флаги: %d | Время: %lld нс | Разница: %lld нс\n",
+                       buffers_read + 1, ITERATION_COUNT, sr, flags, timeNs, timeNs - last_time);
+                last_time = timeNs;
+            } else {
+                printf("Буфер %zu/%d | Сэмплы: %d | Флаги: %d | Время: н/д\n",
+                       buffers_read + 1, ITERATION_COUNT, sr, flags);
             }
 
             if (tx_mode){
@@ -257,7 +271,6 @@ int main(int argc, char *argv[]){
                     generate_bits(bits, bit_count);
                     bpsk(bits, symbols, bit_count);
                     rectangular(symbols, tx_signal, symbol_count, L);
-
                     for (size_t i = 0; i < 2 * tx_mtu; i++)
                         tx_buff[i] = 0;
 
@@ -285,7 +298,8 @@ int main(int argc, char *argv[]){
 
     if (file != NULL)
         fclose(file);
-
+    if (sym_file != NULL)
+        fclose(sym_file);
     free(rx_buffer);
     free(tx_buff);
     free(bits);
