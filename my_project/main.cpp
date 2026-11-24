@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <signal.h>
 #include "transmitter.h"
+#include "timing_sync.h"
 
 #define SAMPLE_RATE 1000000.0
 
@@ -48,7 +49,6 @@ int main(int argc, char *argv[]){
         return EXIT_FAILURE;
     }
 
-    // Частоты выбираются по номеру SDR
     double rx_freq = sdr1 ? RX_FREQ_SDR1 : RX_FREQ_SDR2;
     double tx_freq = sdr1 ? TX_FREQ_SDR1 : TX_FREQ_SDR2;
 
@@ -80,6 +80,8 @@ int main(int argc, char *argv[]){
     size_t bit_count = 0;
     size_t sample_count = 0;
     FILE *sym_file = NULL;
+    TimingSync ts;
+    timing_sync_init(&ts, L, 0.1f, 0.05f);
 
     // Открытие выбранного SDR
     SoapySDRKwargs args = {};
@@ -159,6 +161,14 @@ int main(int argc, char *argv[]){
         return EXIT_FAILURE;
     }
 
+    Complex *rx_cpx = (Complex*)malloc(rx_mtu * sizeof(Complex));
+    Complex *syms   = (Complex*)malloc((rx_mtu / L + 10) * sizeof(Complex));
+
+    if (!rx_cpx || !syms) {
+        fprintf(stderr, "Ошибка выделения памяти для синхронизации\n");
+        return EXIT_FAILURE;
+    }
+
     // Создание TX-потока только в режиме передачи
     if (tx_mode){
         txStream = SoapySDRDevice_setupStream(sdr, SOAPY_SDR_TX, SOAPY_SDR_CS16, channels, 1, NULL);
@@ -185,7 +195,7 @@ int main(int argc, char *argv[]){
         }
 
         symbol_count = tx_mtu / L;
-        bit_count = symbol_count;
+        bit_count = symbol_count *2;
         sample_count = symbol_count * L;
 
         bits = (int *)malloc(bit_count * sizeof(int));
@@ -210,7 +220,7 @@ int main(int argc, char *argv[]){
             return EXIT_FAILURE;
         }
 
-        sym_file = fopen("qpsk_symbols.txt", "w");  // или sdr2_rx_symbols.txt
+        sym_file = fopen("qpsk_symbols.txt", "w");
         if (!sym_file) {
             perror("qpsk_symbols.txt");
             return EXIT_FAILURE;
@@ -237,9 +247,15 @@ int main(int argc, char *argv[]){
 
             if (rx_mode && sym_file != NULL) {
                 for (int i = 0; i < sr; i++) {
-                    float I = (float)rx_buffer[2 * i];
-                    float Q = (float)rx_buffer[2 * i + 1];
-                    fprintf(sym_file, "%f %f\n", I, Q);
+                    rx_cpx[i].I = (float)rx_buffer[2*i] / 20000.0f;
+                    rx_cpx[i].Q = (float)rx_buffer[2*i+1] / 20000.0f;
+                    // float I = (float)rx_buffer[2 * i];
+                    // float Q = (float)rx_buffer[2 * i + 1];
+                    // fprintf(sym_file, "%f %f\n", I, Q);
+                }
+                int n_sym = timing_sync_process(&ts, rx_cpx, sr, syms, sr / L + 5);
+                for (int i = 0; i < n_sym; i++) {
+                    fprintf(sym_file, "%f %f\n", syms[i].I, syms[i].Q);
                 }
             }
 
@@ -269,7 +285,7 @@ int main(int argc, char *argv[]){
                     }*/
 
                     generate_bits(bits, bit_count);
-                    bpsk(bits, symbols, bit_count);
+                    qpsk(bits, symbols, bit_count);
                     rectangular(symbols, tx_signal, symbol_count, L);
                     for (size_t i = 0; i < 2 * tx_mtu; i++)
                         tx_buff[i] = 0;
@@ -305,6 +321,8 @@ int main(int argc, char *argv[]){
     free(bits);
     free(symbols);
     free(tx_signal);
+    free(rx_cpx);
+    free(syms);
 
     if (sdr != NULL){
         if (rxStream != NULL){
